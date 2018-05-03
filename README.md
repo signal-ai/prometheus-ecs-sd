@@ -50,7 +50,7 @@ Under ECS task definition (task.json):
 
 ``{"name": "PROMETHEUS_ENDPOINT", "value": "5m:/mymetrics,30s:/mymetrics2"}``
 
-Available intervals: 15s, 30s, 1m, 5m.
+Available scrape intervals: 15s, 30s, 1m, 5m.
 
 Default metric path is /metrics. Default interval is 1m.
 
@@ -100,4 +100,27 @@ The following Prometheus configuration should be used to support all available i
         action: replace
         target_label: __metrics_path__
         regex: (.+)
+```
+## EC2 IAM Policy
+
+The following IAM Policy should be added when running discoverecs.py in EC2:
+
+```JSON
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": ["ecs:Describe*", "ecs:List*"],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+```
+
+You will also need EC2 Read Only Access. If you use Terraform:
+
+```hcl
+# Prometheus EC2 service discovery
+resource "aws_iam_role_policy_attachment" "prometheus-server-role-ec2-read-only" {
+  role = "${aws_iam_role.prometheus-server-role.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+}
 ```
