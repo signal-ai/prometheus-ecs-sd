@@ -4,7 +4,7 @@ ECS Service Discovery for Prometheus
 ## Info
 This tool provides Prometheus service discovery for Docker containers running on AWS ECS. You can easily instrument your app using a Prometheus
 client and enable discovery adding an ENV variable at the Service Task Definition. Your container will then be added
-to the list of Prometheus targets to be scraped. Requires python2, works with Prometheus 2.x.
+to the list of Prometheus targets to be scraped. Requires python2 and boto3. Works with Prometheus 2.x.
 
 ## Setup
 ``discoverecs.py`` should run alongside the Prometheus server. It generates targets using JSON file service discovery. It can
