@@ -124,3 +124,12 @@ resource "aws_iam_role_policy_attachment" "prometheus-server-role-ec2-read-only"
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 }
 ```
+
+## Special cases
+For skipping labels, set PROMETHEUS_NOLABELS to "true".
+This is useful when you use "blackbox" exporters or Pushgateway in a task
+and metrics are exposed at a service level. This way, no EC2/ECS labels
+will be exposed and the instance label will be empty.
+
+PROMETHEUS_PORT can be used for tasks using classic ELB setup with multiple
+port mappings.
