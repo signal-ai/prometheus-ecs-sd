@@ -288,7 +288,7 @@ def task_info_to_targets(task_info):
                         ecs_cluster_name=ecs_cluster_name,
                         ec2_instance_id=ec2_instance_id)]
                 else:
-                    log(task['taskArn'] + ' does not have a networkBinding')
+                    log(task_info.task['taskArn'] + ' does not have a networkBinding')
     return []
 
 class Main:
