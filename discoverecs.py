@@ -142,7 +142,7 @@ class TaskInfoDiscoverer:
                             for container_definition in task_definition['containerDefinitions']:
                                 prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
                                 if container_definition['name'] in no_network_binding and prometheus:
-                                    print(task['group'] + ':' + container_definition['name'] + ' does not have a networkBinding. Skipping for next run.')
+                                    log(task['group'] + ':' + container_definition['name'] + ' does not have a networkBinding. Skipping for next run.')
                                     no_cache = True
                             if not no_cache:
                                 tasks[task['taskArn']] = task
@@ -359,7 +359,7 @@ class Main:
                 if labels:
                     job['labels'].update(labels)
                 jobs[interval].append(job)
-                print(job)
+                log(job)
         self.write_jobs(jobs)
 
     def loop(self):
