@@ -123,12 +123,31 @@ class TaskInfoDiscoverer:
         self.ec2_instance_cache.flip()
 
     def describe_tasks(self, cluster_arn, task_arns):
+        def fetcher_task_definition(arn):
+            return self.ecs_client.describe_task_definition(taskDefinition=arn)['taskDefinition']
+
         def fetcher(fetch_task_arns):
             tasks = {}
             result = self.ecs_client.describe_tasks(cluster=cluster_arn, tasks=fetch_task_arns)
             if 'tasks' in result:
                 for task in result['tasks']:
-                    tasks[task['taskArn']] = task
+                    no_network_binding = []
+                    for container in task['containers']:
+                        if 'networkBindings' not in container or len(container['networkBindings']) == 0:
+                            no_network_binding.append(container['name'])
+                    if no_network_binding:
+                            arn = task['taskDefinitionArn']
+                            no_cache = None
+                            task_definition = self.task_definition_cache.get(arn, fetcher_task_definition)
+                            for container_definition in task_definition['containerDefinitions']:
+                                prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
+                                if container_definition['name'] in no_network_binding and prometheus:
+                                    print(task['group'] + ':' + container_definition['name'] + ' does not have a networkBinding. Skipping for next run.')
+                                    no_cache = True
+                            if not no_cache:
+                                tasks[task['taskArn']] = task
+                    else:
+                        tasks[task['taskArn']] = task
             return tasks
         return self.task_cache.get_dict(task_arns, fetcher).values()
 
@@ -260,35 +279,32 @@ def task_info_to_targets(task_info):
         containers = filter(lambda c:c['name'] == container_definition['name'], task_info.task['containers'])
         if prometheus:
             for container in containers:
-                if 'networkBindings' in container and len(container['networkBindings']) > 0:
-                    if prom_port:
-                        first_port = prom_port
-                    else:
-                        first_port = str(container['networkBindings'][0]['hostPort'])
-                    ecs_task_name=extract_name(task_info.task['taskDefinitionArn'])
-                    if nolabels:
-                        p_instance = ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
-                    else:
-                        p_instance = task_info.ec2_instance['PrivateIpAddress'] + ':' + first_port
-                        ecs_task_id=extract_name(task_info.task['taskArn'])
-                        ecs_task_version=extract_task_version(task_info.task['taskDefinitionArn'])
-                        ecs_container_id=extract_name(container['containerArn'])
-                        ecs_cluster_name=extract_name(task_info.task['clusterArn'])
-                        ec2_instance_id=task_info.container_instance['ec2InstanceId']
-
-                    return [Target(
-                        ip=task_info.ec2_instance['PrivateIpAddress'],
-                        port=first_port,
-                        metrics_path=metrics_path,
-                        p_instance=p_instance,
-                        ecs_task_id=ecs_task_id,
-                        ecs_task_name=ecs_task_name,
-                        ecs_task_version=ecs_task_version,
-                        ecs_container_id=ecs_container_id,
-                        ecs_cluster_name=ecs_cluster_name,
-                        ec2_instance_id=ec2_instance_id)]
+                ecs_task_name=extract_name(task_info.task['taskDefinitionArn'])
+                if prom_port:
+                    first_port = prom_port
                 else:
-                    log(task_info.task['taskArn'] + ' does not have a networkBinding')
+                    first_port = str(container['networkBindings'][0]['hostPort'])
+                if nolabels:
+                    p_instance = ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
+                else:
+                    p_instance = task_info.ec2_instance['PrivateIpAddress'] + ':' + first_port
+                    ecs_task_id=extract_name(task_info.task['taskArn'])
+                    ecs_task_version=extract_task_version(task_info.task['taskDefinitionArn'])
+                    ecs_container_id=extract_name(container['containerArn'])
+                    ecs_cluster_name=extract_name(task_info.task['clusterArn'])
+                    ec2_instance_id=task_info.container_instance['ec2InstanceId']
+
+                return [Target(
+                    ip=task_info.ec2_instance['PrivateIpAddress'],
+                    port=first_port,
+                    metrics_path=metrics_path,
+                    p_instance=p_instance,
+                    ecs_task_id=ecs_task_id,
+                    ecs_task_name=ecs_task_name,
+                    ecs_task_version=ecs_task_version,
+                    ecs_container_id=ecs_container_id,
+                    ecs_cluster_name=ecs_cluster_name,
+                    ec2_instance_id=ec2_instance_id)]
     return []
 
 class Main:
