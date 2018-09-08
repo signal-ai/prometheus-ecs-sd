@@ -194,7 +194,7 @@ class TaskInfoDiscoverer:
             t.ec2_instance = dict_get(instances, t.container_instance['ec2InstanceId'], None)
 
     def get_infos_for_cluster(self, cluster_arn):
-        tasks_pages = self.ecs_client.get_paginator('list_tasks').paginate(cluster=cluster_arn)
+        tasks_pages = self.ecs_client.get_paginator('list_tasks').paginate(cluster=cluster_arn, launchType='EC2')
         task_infos = []
         for task_arns in tasks_pages:
             if task_arns['taskArns']:
