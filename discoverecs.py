@@ -6,6 +6,7 @@ import argparse
 import time
 import os
 import re
+import traceback
 
 """
 Copyright 2018 Signal Media Ltd
@@ -283,7 +284,7 @@ def task_info_to_targets(task_info):
                 if prom_port:
                     first_port = prom_port
                 else:
-                    first_port = str(container['networkBindings'][0]['hostPort'])
+                    first_port = '9100'
                 if nolabels:
                     p_instance = ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
                 else:
@@ -369,7 +370,10 @@ class Main:
 
     def loop(self):
         while True:
-            self.discover_tasks()
+            try:
+                self.discover_tasks()
+            except:
+                traceback.print_exc()
             time.sleep(self.interval)
 
 def main():
