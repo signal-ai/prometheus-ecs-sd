@@ -287,7 +287,12 @@ def task_info_to_targets(task_info):
                 if nolabels:
                     p_instance = ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
                 else:
-                    p_instance = task_info.ec2_instance['PrivateIpAddress'] + ':' + first_port
+                    if task_info.task_definition.get('networkMode') == 'awsvpc':
+                        eni = list(filter(lambda x: x.get('PrivateIpAddress') != task_info.ec2_instance['PrivateIpAddress'], task_info.ec2_instance.get('NetworkInterfaces')))[0]
+                        interface_ip = eni.get('PrivateIpAddress')
+                    else:
+                        interface_ip = task_info.ec2_instance['PrivateIpAddress']
+                    p_instance = interface_ip + ':' + first_port
                     ecs_task_id=extract_name(task_info.task['taskArn'])
                     ecs_task_version=extract_task_version(task_info.task['taskDefinitionArn'])
                     ecs_container_id=extract_name(container['containerArn'])
@@ -295,7 +300,7 @@ def task_info_to_targets(task_info):
                     ec2_instance_id=task_info.container_instance['ec2InstanceId']
 
                 return [Target(
-                    ip=task_info.ec2_instance['PrivateIpAddress'],
+                    ip=interface_ip,
                     port=first_port,
                     metrics_path=metrics_path,
                     p_instance=p_instance,
