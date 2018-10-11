@@ -135,10 +135,10 @@ class TaskInfoDiscoverer:
                     for container in task['containers']:
                         if 'networkBindings' not in container or len(container['networkBindings']) == 0:
                             no_network_binding.append(container['name'])
-                    if no_network_binding:
-                            arn = task['taskDefinitionArn']
+                    arn = task['taskDefinitionArn']
+                    task_definition = self.task_definition_cache.get(arn, fetcher_task_definition)
+                    if no_network_binding and task_definition.get('networkMode') != 'awsvpc':
                             no_cache = None
-                            task_definition = self.task_definition_cache.get(arn, fetcher_task_definition)
                             for container_definition in task_definition['containerDefinitions']:
                                 prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
                                 if container_definition['name'] in no_network_binding and prometheus:
