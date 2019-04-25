@@ -285,7 +285,8 @@ def task_info_to_targets(task_info):
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
                 if nolabels:
-                    p_instance = ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
+                    p_instance = ecs_task_name
+                    ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
                 else:
                     p_instance = task_info.ec2_instance['PrivateIpAddress'] + ':' + first_port
                     ecs_task_id=extract_name(task_info.task['taskArn'])
@@ -339,9 +340,8 @@ class Main:
             path_interval = extract_path_interval(target.metrics_path)
             for path, interval in path_interval.items():
                 labels = None
-                if target.p_instance is not None:
+                if target.ecs_task_name not in target.p_instance:
                     labels = {
-                        'instance': target.p_instance,
                         'ecs_task_id' : target.ecs_task_id,
                         'ecs_task_version' : target.ecs_task_version,
                         'ecs_container_id' : target.ecs_container_id,
@@ -351,8 +351,8 @@ class Main:
                 job = {
                     'targets' : [target.ip + ':' + target.port],
                     'labels' : {
+                        'instance': target.p_instance,
                         'job' : target.ecs_task_name,
-                        'port' : target.port,
                         'metrics_path' : path
                     }
                 }
