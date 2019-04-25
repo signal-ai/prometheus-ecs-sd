@@ -34,7 +34,7 @@ Default metric path is /metrics. Default interval is 1m.
 For skipping labels, set PROMETHEUS_NOLABELS to "true".
 This is useful when you use "blackbox" exporters or Pushgateway in a task
 and metrics are exposed at a service level. This way, no ec2/ecs labels
-will be exposed and the instance label will be empty.
+will be exposed and the instance label will always point to the job name.
 
 PROMETHEUS_PORT can be used for tasks using classic ELB setup with multiple
 port mappings.
