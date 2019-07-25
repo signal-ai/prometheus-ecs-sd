@@ -36,8 +36,8 @@ This is useful when you use "blackbox" exporters or Pushgateway in a task
 and metrics are exposed at a service level. This way, no ec2/ecs labels
 will be exposed and the instance label will always point to the job name.
 
-PROMETHEUS_PORT can be used for tasks using classic ELB setup with multiple
-port mappings.
+PROMETHEUS_PORT must be set when using awsvpc network mode. It can also be used
+for tasks using a classic ELB setup with multiple port mappings.
 """
 
 def log(message):
@@ -133,7 +133,7 @@ class TaskInfoDiscoverer:
                 for task in result['tasks']:
                     no_network_binding = []
                     for container in task['containers']:
-                        if 'networkBindings' not in container or len(container['networkBindings']) == 0:
+                        if ('networkBindings' not in container or len(container['networkBindings']) == 0) and len(container['networkInterfaces']) == 0:
                             no_network_binding.append(container['name'])
                     if no_network_binding:
                             arn = task['taskDefinitionArn']
@@ -284,11 +284,15 @@ def task_info_to_targets(task_info):
                     first_port = prom_port
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
+                if task_info.task_definition.get('networkMode') == 'awsvpc':
+                    interface_ip = container['networkInterfaces'][0]['privateIpv4Address']
+                else:
+                    interface_ip = task_info.ec2_instance['PrivateIpAddress']
                 if nolabels:
                     p_instance = ecs_task_name
                     ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
                 else:
-                    p_instance = task_info.ec2_instance['PrivateIpAddress'] + ':' + first_port
+                    p_instance = interface_ip + ':' + first_port
                     ecs_task_id=extract_name(task_info.task['taskArn'])
                     ecs_task_version=extract_task_version(task_info.task['taskDefinitionArn'])
                     ecs_container_id=extract_name(container['containerArn'])
@@ -296,7 +300,7 @@ def task_info_to_targets(task_info):
                     ec2_instance_id=task_info.container_instance['ec2InstanceId']
 
                 return [Target(
-                    ip=task_info.ec2_instance['PrivateIpAddress'],
+                    ip=interface_ip,
                     port=first_port,
                     metrics_path=metrics_path,
                     p_instance=p_instance,
