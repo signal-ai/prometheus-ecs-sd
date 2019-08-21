@@ -139,9 +139,12 @@ class TaskInfoDiscoverer:
                             arn = task['taskDefinitionArn']
                             no_cache = None
                             task_definition = self.task_definition_cache.get(arn, fetcher_task_definition)
+                            is_host_network_mode = task_definition.get('networkMode') == 'host'
                             for container_definition in task_definition['containerDefinitions']:
                                 prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
-                                if container_definition['name'] in no_network_binding and prometheus:
+                                prometheus_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_PORT')
+                                port_mappings = container_definition.get('portMappings')
+                                if container_definition['name'] in no_network_binding and prometheus and not (is_host_network_mode and (prometheus_port or port_mappings)):
                                     log(task['group'] + ':' + container_definition['name'] + ' does not have a networkBinding. Skipping for next run.')
                                     no_cache = True
                             if not no_cache:
@@ -282,6 +285,8 @@ def task_info_to_targets(task_info):
                 ecs_task_name=extract_name(task_info.task['taskDefinitionArn'])
                 if prom_port:
                     first_port = prom_port
+                elif task_info.task_definition.get('networkMode') == 'host':
+                    first_port = str(container_definition['portMappings'][0]['hostPort'])
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
                 if task_info.task_definition.get('networkMode') == 'awsvpc':
