@@ -44,7 +44,7 @@ def log(message):
     print(message)
 
 def chunk_list(l, n):
-    return [l[i:i + n] for i in xrange(0, len(l), n)]
+    return [l[i:i + n] for i in range(0, len(l), n)]
 
 def dict_get(d, k, default):
     if k in d:
