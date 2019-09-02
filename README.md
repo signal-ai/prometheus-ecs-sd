@@ -132,7 +132,10 @@ This is useful when you use "blackbox" exporters or Pushgateway in a task
 and metrics are exposed at a service level. This way, no EC2/ECS labels
 will be exposed and the instance label will always point to the job name.
 
+## Networking
+If PROMETHEUS_PORT is not set, the script will pick the first port from the container definition (in awsvpc and host network mode) or the container host network bindings in bridge mode.
+
 PROMETHEUS_PORT can be used for tasks using classic ELB setup with multiple
 port mappings.
 
-If you are using awsvpc, you must set PROMETHEUS_PORT.
+If your container uses multiple ports, it's recommended to specify PROMETHEUS_PORT explicitly

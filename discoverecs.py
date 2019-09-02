@@ -283,9 +283,10 @@ def task_info_to_targets(task_info):
         if prometheus:
             for container in containers:
                 ecs_task_name=extract_name(task_info.task['taskDefinitionArn'])
+                has_host_port_mapping = 'portMappings' in container_definition and len(container_definition['portMappings']) > 0
                 if prom_port:
                     first_port = prom_port
-                elif task_info.task_definition.get('networkMode') == 'host':
+                elif has_host_port_mapping and task_info.task_definition.get('networkMode') in ('host', 'awsvpc'):
                     first_port = str(container_definition['portMappings'][0]['hostPort'])
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
@@ -386,3 +387,4 @@ def main():
 
 if __name__== "__main__":
     main()
+
