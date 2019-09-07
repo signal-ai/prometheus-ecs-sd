@@ -8,7 +8,7 @@ import os
 import re
 
 """
-Copyright 2018 Signal Media Ltd
+Copyright 2018, 2019 Signal Media Ltd
 
 ECS service discovery for tasks. Please enable it by setting env variable
 PROMETHEUS to "true".
@@ -104,7 +104,10 @@ class TaskInfo:
         self.ec2_instance = None
 
     def valid(self):
-        return self.task_definition and self.container_instance and self.ec2_instance
+        if 'FARGATE' in self.task_definition.get('requiresCompatibilities', ''):
+            return self.task_definition
+        else:
+            return self.task_definition and self.container_instance and self.ec2_instance
 
 class TaskInfoDiscoverer:
 
@@ -196,14 +199,15 @@ class TaskInfoDiscoverer:
         for t in task_infos:
             t.ec2_instance = dict_get(instances, t.container_instance['ec2InstanceId'], None)
 
-    def get_infos_for_cluster(self, cluster_arn):
-        tasks_pages = self.ecs_client.get_paginator('list_tasks').paginate(cluster=cluster_arn, launchType='EC2')
+    def get_infos_for_cluster(self, cluster_arn, launch_type):
+        tasks_pages = self.ecs_client.get_paginator('list_tasks').paginate(cluster=cluster_arn, launchType=launch_type)
         task_infos = []
         for task_arns in tasks_pages:
             if task_arns['taskArns']:
                 task_infos += self.create_task_infos(cluster_arn, task_arns['taskArns'])
         self.add_task_definitions(task_infos)
-        self.add_container_instances(task_infos, cluster_arn)
+        if 'EC2' in launch_type:
+            self.add_container_instances(task_infos, cluster_arn)
         return task_infos
 
     def print_cache_stats(self):
@@ -218,11 +222,14 @@ class TaskInfoDiscoverer:
     def get_infos(self):
         self.flip_caches()
         task_infos = []
+        fargate_task_infos = []
         clusters_pages = self.ecs_client.get_paginator('list_clusters').paginate()
         for clusters in clusters_pages:
             for cluster_arn in clusters['clusterArns']:
-                task_infos += self.get_infos_for_cluster(cluster_arn)
+                task_infos += self.get_infos_for_cluster(cluster_arn, 'EC2')
+                fargate_task_infos += self.get_infos_for_cluster(cluster_arn, 'FARGATE')
         self.add_ec2_instances(task_infos)
+        task_infos += fargate_task_infos
         self.print_cache_stats()
         return task_infos
 
@@ -286,14 +293,19 @@ def task_info_to_targets(task_info):
                 has_host_port_mapping = 'portMappings' in container_definition and len(container_definition['portMappings']) > 0
                 if prom_port:
                     first_port = prom_port
-                elif has_host_port_mapping and task_info.task_definition.get('networkMode') in ('host', 'awsvpc'):
-                    first_port = str(container_definition['portMappings'][0]['hostPort'])
+                elif task_info.task_definition.get('networkMode') in ('host', 'awsvpc'):
+                     if has_host_port_mapping:
+                         first_port = str(container_definition['portMappings'][0]['hostPort'])
+                     else:
+                         first_port = '80'
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
+
                 if task_info.task_definition.get('networkMode') == 'awsvpc':
                     interface_ip = container['networkInterfaces'][0]['privateIpv4Address']
                 else:
                     interface_ip = task_info.ec2_instance['PrivateIpAddress']
+
                 if nolabels:
                     p_instance = ecs_task_name
                     ecs_task_id = ecs_task_version = ecs_container_id = ecs_cluster_name = ec2_instance_id = None
@@ -301,9 +313,12 @@ def task_info_to_targets(task_info):
                     p_instance = interface_ip + ':' + first_port
                     ecs_task_id=extract_name(task_info.task['taskArn'])
                     ecs_task_version=extract_task_version(task_info.task['taskDefinitionArn'])
-                    ecs_container_id=extract_name(container['containerArn'])
                     ecs_cluster_name=extract_name(task_info.task['clusterArn'])
-                    ec2_instance_id=task_info.container_instance['ec2InstanceId']
+                    if 'FARGATE' in task_info.task_definition.get('requiresCompatibilities', ''):
+                        ec2_instance_id = ecs_container_id = None
+                    else:
+                        ec2_instance_id=task_info.container_instance['ec2InstanceId']
+                        ecs_container_id=extract_name(container['containerArn'])
 
                 return [Target(
                     ip=interface_ip,
@@ -349,8 +364,14 @@ class Main:
         for target in targets:
             path_interval = extract_path_interval(target.metrics_path)
             for path, interval in path_interval.items():
-                labels = None
-                if target.ecs_task_name not in target.p_instance:
+                labels = False
+                if target.ec2_instance_id is None and target.ecs_task_id:
+                    labels = {
+                        'ecs_task_id' : target.ecs_task_id,
+                        'ecs_task_version' : target.ecs_task_version,
+                        'ecs_cluster' : target.ecs_cluster_name
+                    }
+                elif target.ec2_instance_id:
                     labels = {
                         'ecs_task_id' : target.ecs_task_id,
                         'ecs_task_version' : target.ecs_task_version,
