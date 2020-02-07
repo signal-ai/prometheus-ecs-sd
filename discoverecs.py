@@ -285,6 +285,7 @@ def task_info_to_targets(task_info):
         metrics_path = get_environment_var(container_definition['environment'], 'PROMETHEUS_ENDPOINT')
         nolabels = get_environment_var(container_definition['environment'], 'PROMETHEUS_NOLABELS')
         prom_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_PORT')
+        prom_container_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_CONTAINER_PORT')
         if nolabels != 'true': nolabels = None
         containers = filter(lambda c:c['name'] == container_definition['name'], task_info.task['containers'])
         if prometheus:
@@ -298,6 +299,9 @@ def task_info_to_targets(task_info):
                          first_port = str(container_definition['portMappings'][0]['hostPort'])
                      else:
                          first_port = '80'
+                elif prom_container_port:
+                    binding_by_container_port = filter(lambda c:str(c['containerPort']) == prom_container_port, container['networkBindings'])
+                    first_port = str(binding_by_container_port[0]['hostPort'])
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
 
