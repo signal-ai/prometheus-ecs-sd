@@ -143,4 +143,4 @@ in bridge mode. On Fargate, if PROMETHEUS_PORT is not set, it will default to po
 If PROMETHEUS_CONTAINER_PORT is set, it will look at the container host network bindings, and find the entry with a matching containerPort. It will then use the hostPort found there as target port.
 This is useful when the container port is known, but the hostPort is randomly picked by ECS (by setting hostPort to 0 in the task definition).
 
-If your container uses multiple ports, it's recommended to specify PROMETHEUS_PORT explicitly.
+If your container uses multiple ports, it's recommended to specify PROMETHEUS_PORT (awsvpc, host) or PROMETHEUS_CONTAINER_PORT (bridge).
