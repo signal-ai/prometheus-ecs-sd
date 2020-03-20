@@ -235,13 +235,14 @@ class TaskInfoDiscoverer:
 
 class Target:
 
-    def __init__(self, ip, port, metrics_path,
-                 p_instance, ecs_task_id, ecs_task_name, ecs_task_version,
+    def __init__(self, ip, port, metrics_path, p_instance, tags,
+                 ecs_task_id, ecs_task_name, ecs_task_version,
                  ecs_container_id, ecs_cluster_name, ec2_instance_id):
         self.ip = ip
         self.port = port
         self.metrics_path = metrics_path
         self.p_instance = p_instance
+        self.tags = tags
         self.ecs_task_id = ecs_task_id
         self.ecs_task_name = ecs_task_name
         self.ecs_task_version = ecs_task_version
@@ -285,6 +286,7 @@ def task_info_to_targets(task_info):
         metrics_path = get_environment_var(container_definition['environment'], 'PROMETHEUS_ENDPOINT')
         nolabels = get_environment_var(container_definition['environment'], 'PROMETHEUS_NOLABELS')
         prom_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_PORT')
+        prom_tags = get_environment_var(container_definition['environment'], 'PROMETHEUS_TAGS')
         prom_container_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_CONTAINER_PORT')
         if nolabels != 'true': nolabels = None
         containers = filter(lambda c:c['name'] == container_definition['name'], task_info.task['containers'])
@@ -329,6 +331,7 @@ def task_info_to_targets(task_info):
                     port=first_port,
                     metrics_path=metrics_path,
                     p_instance=p_instance,
+                    tags=prom_tags,
                     ecs_task_id=ecs_task_id,
                     ecs_task_name=ecs_task_name,
                     ecs_task_version=ecs_task_version,
@@ -388,6 +391,7 @@ class Main:
                     'labels' : {
                         'instance': target.p_instance,
                         'job' : target.ecs_task_name,
+                        'tags' : target.tags,
                         'metrics_path' : path
                     }
                 }

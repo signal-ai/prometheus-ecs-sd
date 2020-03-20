@@ -11,7 +11,7 @@ and awsvpc (EC2 and Fargate) network modes.
 ``discoverecs.py`` should run alongside the Prometheus server. It generates targets using JSON file service discovery. It can
 be started by running:
 
-``python discoverecs.py --directory /opt/prometheus-ecs`` 
+``python discoverecs.py --directory /opt/prometheus-ecs``
 
 Where ``/opt/prometheus-ecs`` is defined in your Prometheus config as a file_sd_config job:
 
@@ -90,7 +90,7 @@ The following Prometheus configuration should be used to support all available i
         action: replace
         target_label: __metrics_path__
         regex: (.+)
-        
+
   - job_name: 'ecs-5m'
     scrape_interval: 5m
     file_sd_configs:
@@ -102,6 +102,12 @@ The following Prometheus configuration should be used to support all available i
         target_label: __metrics_path__
         regex: (.+)
 ```
+
+To add tags to the discovered services, set the PROMETHEUS_TAGS ENV variable:
+
+``{"name": "PROMETHEUS_TAGS", "value": ",team=foo,stage=prod,"}``
+
+
 ## EC2 IAM Policy
 
 The following IAM Policy should be added when running discoverecs.py in EC2:
