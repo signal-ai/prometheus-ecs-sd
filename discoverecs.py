@@ -1,6 +1,7 @@
 from __future__ import print_function
 from collections import defaultdict
 import boto3
+import botocore
 import json
 import argparse
 import time
@@ -119,6 +120,23 @@ class TaskInfoDiscoverer:
         self.container_instance_cache = FlipCache()
         self.ec2_instance_cache = FlipCache()
 
+    def assume_role(self, role):
+        try:
+            sts_client = boto3.client('sts')
+            response = sts_client.assume_role(RoleArn=role, RoleSessionName='prometheus-ecs-sd')
+            creds = response['Credentials']
+            assumed_session = boto3.Session(
+                aws_access_key_id=creds['AccessKeyId'],
+                aws_secret_access_key=creds['SecretAccessKey'],
+                aws_session_token=creds['SessionToken'])
+            self.ec2_client = assumed_session.client('ec2')
+            self.ecs_client = assumed_session.client('ecs')
+            return True
+        except botocore.exceptions.ClientError as exception:
+            if exception.response['Error']['Code'] == 'AccessDenied':
+                log(exception)
+                return False
+
     def flip_caches(self):
         self.task_cache.flip()
         self.task_definition_cache.flip()
@@ -219,7 +237,12 @@ class TaskInfoDiscoverer:
             self.ec2_instance_cache.hits, self.ec2_instance_cache.misses,
             len(self.ec2_instance_cache.current_cache)))
 
-    def get_infos(self):
+    def get_infos(self, role=None):
+        if role:
+            role_assumed = self.assume_role(role)
+            if not role_assumed:
+                return []
+
         self.flip_caches()
         task_infos = []
         fargate_task_infos = []
@@ -342,9 +365,10 @@ def task_info_to_targets(task_info):
 
 class Main:
 
-    def __init__(self, directory, interval):
+    def __init__(self, directory, interval, roles):
         self.directory = directory
         self.interval = interval
+        self.roles = roles
         self.discoverer = TaskInfoDiscoverer()
 
     def write_jobs(self, jobs):
@@ -357,7 +381,14 @@ class Main:
 
     def get_targets(self):
         targets = []
-        infos = self.discoverer.get_infos()
+
+        if not self.roles:
+            infos = self.discoverer.get_infos()
+        elif isinstance(self.roles, list):
+            infos = []
+            for role in self.roles:
+                infos += self.discoverer.get_infos(role)
+
         for info in infos:
             targets += task_info_to_targets(info)
         return targets
@@ -410,9 +441,10 @@ def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('--directory', required=True)
     arg_parser.add_argument('--interval', default=60)
+    arg_parser.add_argument('--roles', nargs='*', default=None)
     args = arg_parser.parse_args()
     log('Starting. Directory: ' + args.directory + '. Interval: ' + str(args.interval) + 's.')
-    Main(args.directory, float(args.interval)).loop()
+    Main(args.directory, float(args.interval), args.roles).loop()
 
 if __name__== "__main__":
     main()

@@ -15,7 +15,7 @@ be started by running:
 
 Where ``/opt/prometheus-ecs`` is defined in your Prometheus config as a file_sd_config job:
 
-```json
+```YAML
 - job_name: 'ecs-1m'
   scrape_interval: 1m
   file_sd_configs:
@@ -57,7 +57,7 @@ Default metric path is /metrics. Default interval is 1m.
 
 The following Prometheus configuration should be used to support all available intervals:
 
-```json
+```YAML
   - job_name: 'ecs-15s'
     scrape_interval: 15s
     file_sd_configs:
@@ -131,6 +131,39 @@ resource "aws_iam_role_policy_attachment" "prometheus-server-role-ec2-read-only"
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 }
 ```
+
+### Cross-Account service discovery
+
+To discover services in other AWS accounts, follow the below steps:
+
+- Create the above IAM policy in the target accounts, too
+- Create an IAM role in the target accounts with the policy attached and a trust relationship with the Prometheus account so that the discovery service is trusted to assume the role. Trust Policy example:
+
+  ```JSON
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::111111111111:root"
+        },
+        "Action": "sts:AssumeRole",
+        "Condition": {}
+      }
+    ]
+  }
+  ```
+
+- In the account with Prometheus running, add `"sts:AssumeRole"` to the list of allowed actions in the IAM policy
+- Provide the Role ARN or multiple Role ARNs to the discovery service with `--role`:
+
+  ```
+  python discoverecs.py --directory /opt/prometheus-ecs --role \
+    arn:aws:iam::222222222222:role/CrossAccountSdExampleRole \
+    arn:aws:iam::333333333333:role/CrossAccountSdExampleRole
+  ```
+
 
 ## Special cases
 For skipping labels, set PROMETHEUS_NOLABELS to "true".
