@@ -300,8 +300,12 @@ def task_info_to_targets(task_info):
                      else:
                          first_port = '80'
                 elif prom_container_port:
-                    binding_by_container_port = filter(lambda c:str(c['containerPort']) == prom_container_port, container['networkBindings'])
-                    first_port = str(binding_by_container_port[0]['hostPort'])
+                    binding_by_container_port = [c for c in container['networkBindings'] if str(c['containerPort']) == prom_container_port]
+                    if binding_by_container_port:
+                        first_port = str(binding_by_container_port[0]['hostPort'])
+                    else:
+                        log(task_info.task['group'] + ':' + container_definition['name'] + ' does not expose port matching PROMETHEUS_CONTAINER_PORT, omitting')
+                        return []
                 else:
                     first_port = str(container['networkBindings'][0]['hostPort'])
 
