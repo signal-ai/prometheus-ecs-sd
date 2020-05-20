@@ -256,7 +256,7 @@ def get_environment_var(environment, name):
     return None
 
 def extract_name(arn):
-    return arn.split(":")[5].split('/')[1]
+    return arn.split(":")[5].split('/')[-1]
 
 def extract_task_version(taskDefinitionArn):
     return taskDefinitionArn.split(":")[6]
