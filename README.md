@@ -8,14 +8,16 @@ to the list of Prometheus targets to be scraped. Requires python2 or python3 and
 and awsvpc (EC2 and Fargate) network modes.
 
 ## Setup
-``discoverecs.py`` should run alongside the Prometheus server. It generates targets using JSON file service discovery. It can
+`discoverecs.py` should run alongside the Prometheus server. It generates targets using JSON file service discovery. It can
 be started by running:
 
-``python discoverecs.py --directory /opt/prometheus-ecs`` 
+```
+python discoverecs.py --directory /opt/prometheus-ecs
+```
 
-Where ``/opt/prometheus-ecs`` is defined in your Prometheus config as a file_sd_config job:
+Where `/opt/prometheus-ecs` is defined in your Prometheus config as a `file_sd_config` job:
 
-```json
+```yaml
 - job_name: 'ecs-1m'
   scrape_interval: 1m
   file_sd_configs:
@@ -28,16 +30,20 @@ Where ``/opt/prometheus-ecs`` is defined in your Prometheus config as a file_sd_
       regex: (.+)
 ```
 
-You can also specify a discovery interval with ``--interval`` (in seconds). Default is 60s. We also provide caching to minimize hitting query
-rate limits with the AWS ECS API. ``discoverecs.py` runs in a loop until interrupted and will output target information to stdout.
+You can also specify a discovery interval with `--interval` (in seconds). Default is 60s. We also provide caching to minimize hitting query
+rate limits with the AWS ECS API. `discoverecs.py` runs in a loop until interrupted and will output target information to stdout.
 
-To make your application discoverable by Prometheus, you need to set the following ENV variable in your task definition:
+To make your application discoverable by Prometheus, you need to set the following environment variable in your task definition:
 
-``{"name": "PROMETHEUS", "value": "true"}``
+```
+{"name": "PROMETHEUS", "value": "true"}
+```
 
-Metric path and scrape interval is supported via PROMETHEUS_ENDPOINT:
+Metric path and scrape interval is supported via `PROMETHEUS_ENDPOINT`:
 
-``"interval:/metric_path,..."``
+```
+"interval:/metric_path,..."
+```
 
 Examples:
 
@@ -47,17 +53,19 @@ Examples:
 "30s:/mymetrics1,/mymetrics2"
 ```
 
-Under ECS task definition (task.json):
+Under ECS task definition (`task.json`):
 
-``{"name": "PROMETHEUS_ENDPOINT", "value": "5m:/mymetrics,30s:/mymetrics2"}``
+```
+{"name": "PROMETHEUS_ENDPOINT", "value": "5m:/mymetrics,30s:/mymetrics2"}
+```
 
-Available scrape intervals: 15s, 30s, 1m, 5m.
+Available scrape intervals: `15s`, `30s`, `1m`, `5m`.
 
-Default metric path is /metrics. Default interval is 1m.
+The default metric path is `/metrics`. The default scrape interval is `1m`.
 
 The following Prometheus configuration should be used to support all available intervals:
 
-```json
+```yaml
   - job_name: 'ecs-15s'
     scrape_interval: 15s
     file_sd_configs:
@@ -104,7 +112,7 @@ The following Prometheus configuration should be used to support all available i
 ```
 ## EC2 IAM Policy
 
-The following IAM Policy should be added when running discoverecs.py in EC2:
+The following IAM Policy should be added when running `discoverecs.py` in EC2:
 
 ```JSON
   "Version": "2012-10-17",
@@ -127,20 +135,20 @@ resource "aws_iam_role_policy_attachment" "prometheus-server-role-ec2-read-only"
 ```
 
 ## Special cases
-For skipping labels, set PROMETHEUS_NOLABELS to "true".
+For skipping labels, set `PROMETHEUS_NOLABELS` to `true`.
 This is useful when you use "blackbox" exporters or Pushgateway in a task
 and metrics are exposed at a service level. This way, no EC2/ECS labels
 will be exposed and the instance label will always point to the job name.
 
 ## Networking
 
-All network modes are supported (bridge, host and awsvpc).
+All network modes are supported (`bridge`, `host` and `awsvpc`).
 
-If PROMETHEUS_PORT and PROMETHEUS_CONTAINER_PORT are not set, the script will pick the first port from the container
-definition (in awsvpc and host network mode) or the container host network bindings
-in bridge mode. On Fargate, if PROMETHEUS_PORT is not set, it will default to port 80.
+If `PROMETHEUS_PORT` and `PROMETHEUS_CONTAINER_PORT` are not set, the script will pick the first port from the container
+definition (in `awsvpc` and `host` network mode) or the container host network bindings
+in bridge mode. On Fargate, if `PROMETHEUS_PORT` is not set, it will default to port 80.
 
-If PROMETHEUS_CONTAINER_PORT is set, it will look at the container host network bindings, and find the entry with a matching containerPort. It will then use the hostPort found there as target port.
+If `PROMETHEUS_CONTAINER_PORT` is set, it will look at the container host network bindings, and find the entry with a matching `containerPort`. It will then use the `hostPort` found there as target port.
 This is useful when the container port is known, but the hostPort is randomly picked by ECS (by setting hostPort to 0 in the task definition).
 
-If your container uses multiple ports, it's recommended to specify PROMETHEUS_PORT (awsvpc, host) or PROMETHEUS_CONTAINER_PORT (bridge).
+If your container uses multiple ports, it's recommended to specify `PROMETHEUS_PORT` (`awsvpc`, `host`) or `PROMETHEUS_CONTAINER_PORT` (`bridge`).
