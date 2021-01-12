@@ -104,6 +104,7 @@ class TaskInfo:
         self.task_definition = None
         self.container_instance = None
         self.ec2_instance = None
+        self.tags = None
 
     def valid(self):
         if 'FARGATE' in self.task_definition.get('requiresCompatibilities', ''):
@@ -144,10 +145,11 @@ class TaskInfoDiscoverer:
         self.container_instance_cache.flip()
         self.ec2_instance_cache.flip()
 
-    def describe_tasks(self, cluster_arn, task_arns) -> List[Dict]:
-        def fetcher_task_definition(arn):
-            return self.ecs_client.describe_task_definition(taskDefinition=arn)['taskDefinition']
+    def fetcher_task_definition(self, arn):
+        response = self.ecs_client.describe_task_definition(taskDefinition=arn, include=['TAGS'])
+        return response['taskDefinition'], response.get("tags", list())
 
+    def describe_tasks(self, cluster_arn, task_arns) -> List[Dict]:
         def fetcher(fetch_task_arns) -> Dict[str, Dict]:
             tasks = {}
             result = self.ecs_client.describe_tasks(cluster=cluster_arn, tasks=fetch_task_arns)
@@ -160,7 +162,7 @@ class TaskInfoDiscoverer:
                     if no_network_binding:
                             arn = task['taskDefinitionArn']
                             no_cache = None
-                            task_definition = self.task_definition_cache.get(arn, fetcher_task_definition)
+                            task_definition, task_def_tags = self.task_definition_cache.get(arn, self.fetcher_task_definition)
                             is_host_network_mode = task_definition.get('networkMode') == 'host'
                             for container_definition in task_definition['containerDefinitions']:
                                 prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
@@ -180,12 +182,9 @@ class TaskInfoDiscoverer:
         return map(lambda t: TaskInfo(t), self.describe_tasks(cluster_arn, task_arns))
 
     def add_task_definitions(self, task_infos):
-        def fetcher(arn):
-            return self.ecs_client.describe_task_definition(taskDefinition=arn)['taskDefinition']
-
         for task_info in task_infos:
             arn = task_info.task['taskDefinitionArn']
-            task_info.task_definition = self.task_definition_cache.get(arn, fetcher)
+            task_info.task_definition, task_info.tags = self.task_definition_cache.get(arn, self.fetcher_task_definition)
 
     def add_container_instances(self, task_infos, cluster_arn):
         def fetcher(arns):
