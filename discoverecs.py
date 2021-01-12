@@ -165,8 +165,9 @@ class TaskInfoDiscoverer:
                             task_definition, task_def_tags = self.task_definition_cache.get(arn, self.fetcher_task_definition)
                             is_host_network_mode = task_definition.get('networkMode') == 'host'
                             for container_definition in task_definition['containerDefinitions']:
-                                prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
-                                prometheus_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_PORT')
+                                container_environment = {entry['name']: entry['value'] for entry in container_definition['environment']}
+                                prometheus = container_environment.get('PROMETHEUS')
+                                prometheus_port = container_environment.get('PROMETHEUS_PORT')
                                 port_mappings = container_definition.get('portMappings')
                                 if container_definition['name'] in no_network_binding and prometheus and not (is_host_network_mode and (prometheus_port or port_mappings)):
                                     log(task['group'] + ':' + container_definition['name'] + ' does not have a networkBinding. Skipping for next run.')
@@ -274,13 +275,6 @@ class Target:
         self.ecs_cluster_name = ecs_cluster_name
         self.ec2_instance_id = ec2_instance_id
         self.ecs_task_tags = ecs_task_tags
-        self.container_image = container_image
-
-def get_environment_var(environment, name):
-    for entry in environment:
-        if entry['name'] == name:
-            return entry['value']
-    return None
 
 def extract_name(arn):
     return arn.split(":")[5].split('/')[1]
@@ -311,12 +305,13 @@ def task_info_to_targets(task_info):
     clean_label = lambda x: LABEL_CLEAN_REGEX.sub("_", x)
     ecs_task_tags = {clean_label(tag['key']): tag['value']for tag in task_info.tags}
     for container_definition in task_info.task_definition['containerDefinitions']:
-        prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
-        metrics_path = get_environment_var(container_definition['environment'], 'PROMETHEUS_ENDPOINT')
-        nolabels = get_environment_var(container_definition['environment'], 'PROMETHEUS_NOLABELS')
-        prom_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_PORT')
-        prom_tags = get_environment_var(container_definition['environment'], 'PROMETHEUS_TAGS')
-        prom_container_port = get_environment_var(container_definition['environment'], 'PROMETHEUS_CONTAINER_PORT')
+        container_environment = {entry['name']: entry['value'] for entry in container_definition['environment']}
+        prometheus = container_environment.get('PROMETHEUS') # ! evaluates truthy even if "false" --> string is always truthy
+        metrics_path = container_environment.get('PROMETHEUS_ENDPOINT')
+        nolabels = container_environment.get('PROMETHEUS_NOLABELS')
+        prom_port = container_environment.get('PROMETHEUS_PORT')
+        prom_tags = container_environment.get('PROMETHEUS_TAGS')
+        prom_container_port = container_environment.get('PROMETHEUS_CONTAINER_PORT')
         if nolabels != 'true': nolabels = None
         containers = filter(lambda c:c['name'] == container_definition['name'], task_info.task['containers'])
         if prometheus:
