@@ -1,5 +1,6 @@
 from __future__ import print_function
 from collections import defaultdict
+from typing import Dict, Iterator, List
 import boto3
 import botocore
 import json
@@ -143,11 +144,11 @@ class TaskInfoDiscoverer:
         self.container_instance_cache.flip()
         self.ec2_instance_cache.flip()
 
-    def describe_tasks(self, cluster_arn, task_arns):
+    def describe_tasks(self, cluster_arn, task_arns) -> List[Dict]:
         def fetcher_task_definition(arn):
             return self.ecs_client.describe_task_definition(taskDefinition=arn)['taskDefinition']
 
-        def fetcher(fetch_task_arns):
+        def fetcher(fetch_task_arns) -> Dict[str, Dict]:
             tasks = {}
             result = self.ecs_client.describe_tasks(cluster=cluster_arn, tasks=fetch_task_arns)
             if 'tasks' in result:
@@ -175,7 +176,7 @@ class TaskInfoDiscoverer:
             return tasks
         return self.task_cache.get_dict(task_arns, fetcher).values()
 
-    def create_task_infos(self, cluster_arn, task_arns):
+    def create_task_infos(self, cluster_arn, task_arns) -> Iterator[TaskInfo]:
         return map(lambda t: TaskInfo(t), self.describe_tasks(cluster_arn, task_arns))
 
     def add_task_definitions(self, task_infos):
