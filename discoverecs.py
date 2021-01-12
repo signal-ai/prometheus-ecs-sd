@@ -261,7 +261,7 @@ class Target:
     def __init__(self, ip, port, metrics_path, p_instance, tags,
                  ecs_task_id, ecs_task_name, ecs_task_version,
                  ecs_container_id, ecs_cluster_name, ec2_instance_id,
-                 container_image, ecs_task_tags = {}):
+                 ecs_task_tags = {}):
         self.ip = ip
         self.port = port
         self.metrics_path = metrics_path
@@ -323,7 +323,7 @@ def task_info_to_targets(task_info):
             for container in containers:
                 ecs_task_name=extract_name(task_info.task['taskDefinitionArn'])
                 has_host_port_mapping = 'portMappings' in container_definition and len(container_definition['portMappings']) > 0
-                container_image=container.get('image', 'undefined')
+                prom_tags += f"container_image={container.get('image', 'undefined')},"
                 if prom_port:
                     first_port = prom_port
                 elif task_info.task_definition.get('networkMode') in ('host', 'awsvpc'):
@@ -368,7 +368,6 @@ def task_info_to_targets(task_info):
                     ecs_container_id=ecs_container_id,
                     ecs_cluster_name=ecs_cluster_name,
                     ec2_instance_id=ec2_instance_id,
-                    container_image=container_image,
                     ecs_task_tags=ecs_task_tags
                     )]
     return []
@@ -430,7 +429,6 @@ class Main:
                 job = {
                     'targets' : [target.ip + ':' + target.port],
                     'labels' : {
-                        'container_image': target.container_image,
                         'instance': target.p_instance,
                         'job' : target.ecs_task_name,
                         'tags' : target.tags,
