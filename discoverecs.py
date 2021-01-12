@@ -305,6 +305,9 @@ def extract_path_interval(env_variable):
 def task_info_to_targets(task_info):
     if not task_info.valid():
         return []
+    LABEL_CLEAN_REGEX = re.compile(r"[^\w]", re.IGNORECASE)
+    clean_label = lambda x: LABEL_CLEAN_REGEX.sub("_", x)
+    ecs_task_tags = {clean_label(tag['key']): tag['value']for tag in task_info.tags}
     for container_definition in task_info.task_definition['containerDefinitions']:
         prometheus = get_environment_var(container_definition['environment'], 'PROMETHEUS')
         metrics_path = get_environment_var(container_definition['environment'], 'PROMETHEUS_ENDPOINT')
