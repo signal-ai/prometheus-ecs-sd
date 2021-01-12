@@ -260,7 +260,8 @@ class Target:
 
     def __init__(self, ip, port, metrics_path, p_instance, tags,
                  ecs_task_id, ecs_task_name, ecs_task_version,
-                 ecs_container_id, ecs_cluster_name, ec2_instance_id, container_image):
+                 ecs_container_id, ecs_cluster_name, ec2_instance_id,
+                 container_image, ecs_task_tags = {}):
         self.ip = ip
         self.port = port
         self.metrics_path = metrics_path
@@ -272,6 +273,7 @@ class Target:
         self.ecs_container_id = ecs_container_id
         self.ecs_cluster_name = ecs_cluster_name
         self.ec2_instance_id = ec2_instance_id
+        self.ecs_task_tags = ecs_task_tags
         self.container_image = container_image
 
 def get_environment_var(environment, name):
@@ -366,7 +368,9 @@ def task_info_to_targets(task_info):
                     ecs_container_id=ecs_container_id,
                     ecs_cluster_name=ecs_cluster_name,
                     ec2_instance_id=ec2_instance_id,
-                    container_image=container_image)]
+                    container_image=container_image,
+                    ecs_task_tags=ecs_task_tags
+                    )]
     return []
 
 class Main:
@@ -430,7 +434,8 @@ class Main:
                         'instance': target.p_instance,
                         'job' : target.ecs_task_name,
                         'tags' : target.tags,
-                        'metrics_path' : path
+                        'metrics_path' : path,
+                        **target.ecs_task_tags
                     }
                 }
                 if labels:
