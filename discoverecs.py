@@ -304,6 +304,10 @@ def task_info_to_targets(task_info):
     LABEL_CLEAN_REGEX = re.compile(r"[^\w]", re.IGNORECASE)
     clean_label = lambda x: LABEL_CLEAN_REGEX.sub("_", x)
     ecs_task_tags = {clean_label(tag['key']): tag['value']for tag in task_info.tags}
+    ## diese Dopplung wird gemacht, weil im AWS Tagging Standard `application-id` aber nicht `application` geführt ist
+    ## siehe https://github.com/europace/plattform-technologie/blob/master/standards/aws-resource-tagging.md
+    ## application ist gerade ein Standard-Label mit dem u.a. POPS arbeitet, viele Grafana Dashboards funktionieren so
+    if "application_id" in ecs_task_tags and "application" not in ecs_task_tags: ecs_task_tags["application"] = ecs_task_tags["application_id"]
     for container_definition in task_info.task_definition['containerDefinitions']:
         container_environment = {entry['name']: entry['value'] for entry in container_definition['environment']}
         prometheus = container_environment.get('PROMETHEUS') # ! evaluates truthy even if "false" --> string is always truthy
