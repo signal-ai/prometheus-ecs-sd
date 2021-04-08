@@ -341,11 +341,11 @@ def extract_path_interval(env_variable):
                 if re.search("(15s|30s|1m|5m)", pi[0]):
                     path_interval[pi[1]] = pi[0]
                 else:
-                    path_interval[pi[1]] = "1m"
+                    path_interval[pi[1]] = None
             else:
-                path_interval[lst] = "1m"
+                path_interval[lst] = None
     else:
-        path_interval["/metrics"] = "1m"
+        path_interval["/metrics"] = None
     return path_interval
 
 
@@ -457,14 +457,15 @@ def task_info_to_targets(task_info):
 
 
 class Main:
-    def __init__(self, directory, interval):
+    def __init__(self, directory, interval, default_scrape_interval):
         self.directory = directory
         self.interval = interval
+        self.default_scrape_interval = default_scrape_interval
         self.discoverer = TaskInfoDiscoverer()
 
     def write_jobs(self, jobs):
-        for i, j in jobs.items():
-            file_name = self.directory + "/" + i + "-tasks.json"
+        for interval, j in jobs.items():
+            file_name = self.directory + "/" + interval + "-tasks.json"
             tmp_file_name = file_name + ".tmp"
             with open(tmp_file_name, "w") as f:
                 f.write(json.dumps(j, indent=4))
@@ -511,7 +512,7 @@ class Main:
                 }
                 if labels:
                     job["labels"].update(labels)
-                jobs[interval].append(job)
+                jobs[interval or self.default_scrape_interval].append(job)
                 log(job)
         self.write_jobs(jobs)
 
@@ -525,15 +526,20 @@ def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--directory", required=True)
     arg_parser.add_argument("--interval", default=60)
+    arg_parser.add_argument("--default-scrape-interval", default="1m")
     args = arg_parser.parse_args()
     log(
         "Starting. Directory: "
         + args.directory
-        + ". Interval: "
+        + ". Refresh interval: "
         + str(args.interval)
         + "s."
     )
-    Main(args.directory, float(args.interval)).loop()
+    Main(
+        directory=args.directory,
+        interval=float(args.interval),
+        default_scrape_interval=args.default_scrape_interval,
+    ).loop()
 
 
 if __name__ == "__main__":

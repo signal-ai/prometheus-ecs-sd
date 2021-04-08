@@ -60,8 +60,7 @@ The output directory is then `/opt/prometheus-ecs` defined in your Prometheus co
         regex: (.+)
 ```
 
-You can also specify a discovery interval with `--interval` (in seconds). Default is 60s. We also provide caching to minimize hitting query
-rate limits with the AWS ECS API. `discoverecs.py` runs in a loop until interrupted and will output target information to stdout.
+You can also specify a discovery interval with `--interval` (in seconds). The default is `60s`. We also provide caching to minimize hitting query rate limits with the AWS ECS API. `discoverecs.py` runs in a loop until interrupted and will output target information to stdout.
 
 To make your application discoverable by Prometheus, you need to set the following environment variable in your task definition:
 
@@ -91,7 +90,23 @@ Under ECS task definition (`task.json`):
 
 Available scrape intervals: `15s`, `30s`, `1m`, `5m`.
 
-The default metric path is `/metrics`. The default scrape interval is `1m`.
+The default metric path is `/metrics`.
+
+### Default scrape interval
+
+The default scrape interval is `1m` when no interval is specified in the `PROMETHEUS_ENDPOINT` variable.
+
+This can be customised using the option `--default-scrape-interval`. This can be any string which will result in the targets being output to `/opt/prometheus-ecs/<default_scrape_interval>-tasks.json` being written.
+
+e.g. if `default` is used:
+
+```shell
+--default-scrape-interval default
+```
+
+then `/opt/prometheus-ecs/default-tasks.json` will be written. This can be useful to allow configuration of a default scrape interval in your Prometheus config, rather than needing to update the config and then redeploying this discovery service.
+
+### Configuration yaml
 
 The following Prometheus configuration should be used to support all available intervals:
 
