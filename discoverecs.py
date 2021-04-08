@@ -457,15 +457,15 @@ def task_info_to_targets(task_info):
 
 
 class Main:
-    def __init__(self, directory, interval, default_scrape_interval):
+    def __init__(self, directory, interval, default_scrape_interval_prefix):
         self.directory = directory
         self.interval = interval
-        self.default_scrape_interval = default_scrape_interval
+        self.default_scrape_interval_prefix = default_scrape_interval_prefix
         self.discoverer = TaskInfoDiscoverer()
 
     def write_jobs(self, jobs):
-        for interval, j in jobs.items():
-            file_name = self.directory + "/" + interval + "-tasks.json"
+        for prefix, j in jobs.items():
+            file_name = self.directory + "/" + prefix + "-tasks.json"
             tmp_file_name = file_name + ".tmp"
             with open(tmp_file_name, "w") as f:
                 f.write(json.dumps(j, indent=4))
@@ -512,7 +512,7 @@ class Main:
                 }
                 if labels:
                     job["labels"].update(labels)
-                jobs[interval or self.default_scrape_interval].append(job)
+                jobs[interval or self.default_scrape_interval_prefix].append(job)
                 log(job)
         self.write_jobs(jobs)
 
@@ -526,19 +526,19 @@ def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--directory", required=True)
     arg_parser.add_argument("--interval", default=60)
-    arg_parser.add_argument("--default-scrape-interval", default="1m")
+    arg_parser.add_argument("--default-scrape-interval-prefix", default="1m")
     args = arg_parser.parse_args()
     log(
-        "Starting. Directory: "
-        + args.directory
-        + ". Refresh interval: "
-        + str(args.interval)
-        + "s."
+        'Starting...\nDirectory: "{}"\nRefresh interval: "{}s"\nDefault scrape interval prefix: "{}"\n'.format(
+            args.directory,
+            str(args.interval),
+            args.default_scrape_interval_prefix,
+        )
     )
     Main(
         directory=args.directory,
         interval=float(args.interval),
-        default_scrape_interval=args.default_scrape_interval,
+        default_scrape_interval_prefix=args.default_scrape_interval_prefix,
     ).loop()
 
 

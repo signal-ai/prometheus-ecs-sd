@@ -96,12 +96,12 @@ The default metric path is `/metrics`.
 
 The default scrape interval is `1m` when no interval is specified in the `PROMETHEUS_ENDPOINT` variable.
 
-This can be customised using the option `--default-scrape-interval`. This can be any string which will result in the targets being output to `/opt/prometheus-ecs/<default_scrape_interval>-tasks.json` being written.
+This can be customised using the option `--default-scrape-interval-prefix`. This can be any string which will result in the targets being output to `/opt/prometheus-ecs/<default_scrape_interval>-tasks.json` being written.
 
 e.g. if `default` is used:
 
 ```shell
---default-scrape-interval default
+--default-scrape-interval-prefix default
 ```
 
 then `/opt/prometheus-ecs/default-tasks.json` will be written. This can be useful to allow configuration of a default scrape interval in your Prometheus config, rather than needing to update the config and then redeploying this discovery service.
