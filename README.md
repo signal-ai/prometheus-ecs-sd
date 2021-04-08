@@ -71,8 +71,10 @@ To make your application discoverable by Prometheus, you need to set the followi
 Metric path and scrape interval is supported via `PROMETHEUS_ENDPOINT`:
 
 ```text
-"interval:/metric_path,..."
+"[interval:]<metric_path>,..."
 ```
+
+where `interval` is optional.
 
 Examples:
 
