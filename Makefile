@@ -5,4 +5,4 @@ format:
 .PHONY: dev-start
 dev-start:
 	@mkdir -p ./targets
-	poetry run python discoverecs.py --directory $$PWD/targets
+	poetry run python discoverecs.py --directory $$PWD/targets --default-scrape-interval-prefix default
