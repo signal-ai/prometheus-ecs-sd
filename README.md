@@ -114,6 +114,14 @@ If `--tags-to-labels` is set, the given tags will be added to the service discov
 
 If `--tags-to-labels "*"` is provided then _all_ non aws prefixed (`AWS:` or `aws:`) tags will be added.
 
+### Selecting specific cluster ARNs
+
+If you only want to monitor a specific subset of clusters in your ECS account, you can declare them, using the `--cluster-arns` argument. For example:
+
+```
+python discoverecs.py --directory /opt/prometheus-ecs --cluster-arns "arn:aws:ecs:eu-west-1:123456:cluster/staging" "arn:aws:ecs:eu-west-1:123456:cluster/production",
+```
+
 ### Configuration yaml
 
 The following Prometheus configuration should be used to support all available intervals:
