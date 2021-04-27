@@ -8,4 +8,5 @@ dev-start:
 	@mkdir -p ./targets
 	poetry run python discoverecs.py \
 		--directory $$PWD/targets \
-		--default-scrape-interval-prefix default
+		--default-scrape-interval-prefix default \
+		--tags-to-labels system domain
