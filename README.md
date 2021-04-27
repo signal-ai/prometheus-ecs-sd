@@ -108,6 +108,12 @@ e.g. if `default` is used:
 
 then `/opt/prometheus-ecs/default-tasks.json` will be written. This can be useful to allow configuration of a default scrape interval in your Prometheus config, rather than needing to update the config and then redeploying this discovery service.
 
+### Tags to labels
+
+If `--tags-to-labels` is set, the given tags will be added to the service discovery entry as `tag_<tag>` where `<tag>` is the given tag formatted to allowed label characters if the tag exists on either the task definition or task. Task tags override the task definition tags.
+
+If `---tags-to-labels` is set to `*` then _all_ non-aws tags will be added.
+
 ### Configuration yaml
 
 The following Prometheus configuration should be used to support all available intervals:
