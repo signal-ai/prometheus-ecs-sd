@@ -110,7 +110,7 @@ then `/opt/prometheus-ecs/default-tasks.json` will be written. This can be usefu
 
 ### Tags to labels
 
-If `--tags-to-labels` is set, the given tags will be added to the service discovery entry as `tag_<tag>` where `<tag>` is the given tag formatted to allowed label characters if the tag exists on either the task definition or task. Task tags override the task definition tags.
+If `--tags-to-labels` is set, the given tags will be added to the service discovery entry as `__meta_ecs_tag_<tag>` where `<tag>` is the given tag formatted to allowed label characters if the tag exists on either the task definition or task. Task tags override the task definition tags.
 
 If `--tags-to-labels "*"` is provided then _all_ non aws prefixed (`AWS:` or `aws:`) tags will be added.
 

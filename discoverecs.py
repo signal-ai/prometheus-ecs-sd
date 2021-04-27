@@ -545,7 +545,7 @@ class Main:
                         # with leading __ reserved for internal use
                         tag_name = re.sub(r"[^a-zA-Z0-9_]", "_", tag_name).lstrip("_")
                         if tag_name != "" and not re.match(r"^[0-9]", tag_name):
-                            job["labels"]["tag_" + tag_name] = tag_value
+                            job["labels"]["__meta_ecs_tag_" + tag_name] = tag_value
                 if labels:
                     job["labels"].update(labels)
                 jobs[interval or self.default_scrape_interval_prefix].append(job)
