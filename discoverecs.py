@@ -138,7 +138,7 @@ class TaskInfoDiscoverer:
                     "TAGS",
                 ]
                 if self.fetch_tags
-                else None,
+                else [],
             )
 
             return {**response["taskDefinition"], "tags": response.get("tags", [])}
@@ -152,7 +152,7 @@ class TaskInfoDiscoverer:
                     "TAGS",
                 ]
                 if self.fetch_tags
-                else None,
+                else [],
             )
             if "tasks" in result:
                 for task in result["tasks"]:
@@ -539,8 +539,7 @@ class Main:
                 }
                 for tag_name, tag_value in target.tags.items():
                     if not tag_name.lower().startswith("aws:") and (
-                        not tag_name in self.tags_to_labels
-                        or self.tags_to_labels == ["*"]
+                        tag_name in self.tags_to_labels or self.tags_to_labels == ["*"]
                     ):
                         # prometheus labels match [a-zA-Z_][a-zA-Z0-9_]*
                         # with leading __ reserved for internal use
@@ -579,7 +578,8 @@ def main():
     )
     arg_parser.add_argument(
         "--tags-to-labels",
-        nargs="+",
+        nargs="*",
+        default=[],
         help="Task definition tags to convert to labels. Case sensitive.",
     )
     args = arg_parser.parse_args()
@@ -589,7 +589,7 @@ Starting...
 Directory: "{args.directory}"
 Refresh interval: "{str(args.interval)}s"
 Default scrape interval prefix: "{args.default_scrape_interval_prefix}"
-Tags to convert to labels: "{args.tags_to_labels}"
+Tags to convert to labels: {args.tags_to_labels}
         """
     )
     Main(
