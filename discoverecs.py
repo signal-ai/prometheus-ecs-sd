@@ -291,18 +291,25 @@ class TaskInfoDiscoverer:
             )
         )
 
+    def list_clusters(self):
+        if len(self.cluster_arns) > 0:
+            return self.cluster_arns
+        cluster_arns = []
+        clusters_pages = self.ecs_client.get_paginator("list_clusters").paginate()
+        for clusters in clusters_pages:
+            for cluster_arn in clusters["clusterArns"]:
+                cluster_arns += [cluster_arn]
+
+        return cluster_arns
+
     def get_infos(self):
         self.flip_caches()
         task_infos = []
         fargate_task_infos = []
-        clusters_pages = self.ecs_client.get_paginator("list_clusters").paginate()
-        for clusters in clusters_pages:
-            for cluster_arn in clusters["clusterArns"]:
-                # Only register selected ARNs.
-                if cluster_arn not in self.cluster_arns:
-                    continue
-                task_infos += self.get_infos_for_cluster(cluster_arn, "EC2")
-                fargate_task_infos += self.get_infos_for_cluster(cluster_arn, "FARGATE")
+        cluster_arns = self.list_clusters()
+        for cluster_arn in cluster_arns:
+            task_infos += self.get_infos_for_cluster(cluster_arn, "EC2")
+            fargate_task_infos += self.get_infos_for_cluster(cluster_arn, "FARGATE")
         self.add_ec2_instances(task_infos)
         task_infos += fargate_task_infos
         self.print_cache_stats()
