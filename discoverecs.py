@@ -115,7 +115,7 @@ class TaskInfo:
 
 
 class TaskInfoDiscoverer:
-    def __init__(self, fetch_tags=True):
+    def __init__(self, fetch_tags=True, cluster_arns=[]):
         self.ec2_client = boto3.client("ec2")
         self.ecs_client = boto3.client("ecs")
         self.task_cache = FlipCache()
@@ -123,6 +123,7 @@ class TaskInfoDiscoverer:
         self.container_instance_cache = FlipCache()
         self.ec2_instance_cache = FlipCache()
         self.fetch_tags = fetch_tags
+        self.cluster_arns = cluster_arns
 
     def flip_caches(self):
         self.task_cache.flip()
@@ -290,15 +291,25 @@ class TaskInfoDiscoverer:
             )
         )
 
+    def list_clusters(self):
+        if len(self.cluster_arns) > 0:
+            return self.cluster_arns
+        cluster_arns = []
+        clusters_pages = self.ecs_client.get_paginator("list_clusters").paginate()
+        for clusters in clusters_pages:
+            for cluster_arn in clusters["clusterArns"]:
+                cluster_arns += [cluster_arn]
+
+        return cluster_arns
+
     def get_infos(self):
         self.flip_caches()
         task_infos = []
         fargate_task_infos = []
-        clusters_pages = self.ecs_client.get_paginator("list_clusters").paginate()
-        for clusters in clusters_pages:
-            for cluster_arn in clusters["clusterArns"]:
-                task_infos += self.get_infos_for_cluster(cluster_arn, "EC2")
-                fargate_task_infos += self.get_infos_for_cluster(cluster_arn, "FARGATE")
+        cluster_arns = self.list_clusters()
+        for cluster_arn in cluster_arns:
+            task_infos += self.get_infos_for_cluster(cluster_arn, "EC2")
+            fargate_task_infos += self.get_infos_for_cluster(cluster_arn, "FARGATE")
         self.add_ec2_instances(task_infos)
         task_infos += fargate_task_infos
         self.print_cache_stats()
@@ -482,12 +493,12 @@ def task_info_to_targets(task_info):
 
 class Main:
     def __init__(
-        self, directory, interval, default_scrape_interval_prefix, tags_to_labels
+        self, directory, interval, default_scrape_interval_prefix, tags_to_labels, cluster_arns
     ):
         self.directory = directory
         self.interval = interval
         self.default_scrape_interval_prefix = default_scrape_interval_prefix
-        self.discoverer = TaskInfoDiscoverer(fetch_tags=len(tags_to_labels) > 0)
+        self.discoverer = TaskInfoDiscoverer(fetch_tags=len(tags_to_labels) > 0, cluster_arns=cluster_arns)
         self.tags_to_labels = tags_to_labels
 
     def write_jobs(self, jobs):
@@ -557,7 +568,6 @@ class Main:
             self.discover_tasks()
             time.sleep(self.interval)
 
-
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
@@ -582,6 +592,12 @@ def main():
         default=[],
         help="Task definition tags to convert to labels. Case sensitive.",
     )
+    arg_parser.add_argument(
+        "--cluster-arns",
+        nargs="*",
+        default=[],
+        help="The ARNs of the ECS clusters that should be monitored."
+    )
     args = arg_parser.parse_args()
     log(
         f"""
@@ -590,6 +606,7 @@ Directory: "{args.directory}"
 Refresh interval: "{str(args.interval)}s"
 Default scrape interval prefix: "{args.default_scrape_interval_prefix}"
 Tags to convert to labels: {args.tags_to_labels}
+Clusters to query: {args.cluster_arns}
         """
     )
     Main(
@@ -597,6 +614,7 @@ Tags to convert to labels: {args.tags_to_labels}
         interval=args.interval,
         default_scrape_interval_prefix=args.default_scrape_interval_prefix,
         tags_to_labels=args.tags_to_labels,
+        cluster_arns=args.cluster_arns
     ).loop()
 
 
